@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="AI Clarity Checker, layout="centered")
-st.title("AI Clarity Checker™")
+st.title("AI Clarity Checker")
 st.subheader("Clarity Over Cosmetic — A Sample Reference Tool")
 
 uploaded_file = st.file_uploader("📤 Upload the sample CSV file", type=["csv"])
