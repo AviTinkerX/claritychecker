@@ -5,7 +5,7 @@ st.set_page_config(page_title="AI Clarity Checker™", layout="centered")
 st.title("AI Clarity Checker™")
 st.subheader("Clarity Over Cosmetic™ Pack — Upload your team’s real data")
 
-uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("📤 Upload the sample CSV file", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
