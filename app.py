@@ -105,4 +105,3 @@ if uploaded_file is not None:
     if st.button('Download Dashboard as PNG'):
         fig.write_image("/mnt/data/clarity_checker_dashboard_v2.png")
         st.markdown('[Download Image](sandbox:/mnt/data/clarity_checker_dashboard_v2.png)')
-
