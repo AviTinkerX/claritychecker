@@ -23,7 +23,7 @@ if uploaded_file is not None:
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
             "Average Call Handle Time (s)": 600,
-            "Sampling Rate (%)": 40
+            "Sampling Rate (%)": "Undefined"
         }
 
         # Calculate key metrics
@@ -51,7 +51,7 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
+            lambda x: '❌ Breach' if goals["Sampling Rate (%)"] == "Undefined" or x['Rep Sampling Rate (%)'] < 40 else '✅ Clear',
             axis=1
         )
 
@@ -81,7 +81,7 @@ if uploaded_file is not None:
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                'Undefined' if sampling_rate == 0 else goals["Sampling Rate (%)"],
+                'Undefined',
                 goals["Customer Satisfaction (%)"],
                 goals["First Call Resolution (%)"],
                 goals["Average Call Handle Time (s)"]
@@ -93,16 +93,18 @@ if uploaded_file is not None:
 
         # Loop through metrics and add to dashboard
         for index, row in summary_df.iterrows():
+            gauge_color = "orange" if row['Current Value'] < 80 else "#4CAF50"
             fig.add_trace(go.Indicator(
                 mode="gauge+number",
                 value=row['Current Value'],
                 title={"text": f"{row['Metric']} - Goal: {row['Goal']}"},
                 gauge={
                     'axis': {'range': [0, 100] if '%' in row['Metric'] else [0, 1000]},
-                    'bar': {'color': "orange" if row['Current Value'] < goals.get(row['Metric'], 100) else "#4CAF50"},
+                    'bar': {'color': gauge_color},
                     'steps': [
-                        {'range': [0, goals.get(row['Metric'], 100)], 'color': 'red'},
-                        {'range': [goals.get(row['Metric'], 100), 100 if '%' in row['Metric'] else 1000], 'color': 'green'}
+                        {'range': [0, 40], 'color': 'red'},
+                        {'range': [40, 80], 'color': 'orange'},
+                        {'range': [80, 100], 'color': 'green'}
                     ]
                 },
                 domain={'x': [0, 0.5] if index % 2 == 0 else [0.5, 1], 'y': [0.5, 1] if index < 2 else [0, 0.5]}
