@@ -3,10 +3,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 
-st.set_page_config(page_title="Clarity Checker™", layout="wide")
+st.set_page_config(page_title="Clarity Checker", layout="wide")
 
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>Clarity Checker™</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #4A5568;'>Upload your team's data and visualize clarity like never before.</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>Clarity Checker</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #4A5568;'>Upload your team's data and visualize clarity.</h3>", unsafe_allow_html=True)
 
 # File uploader
 uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
