@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Clarity Checker", layout="wide")
 
 # Main headers
-st.markdown("# Clarity Checker™ - Visual Capitalist Style")
-st.markdown("### Upload your team's data and visualize clarity like never before.")
+st.markdown("# Clarity Checker")
+st.markdown("### Upload the sample data.")
 
 # File uploader
 uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
