@@ -1,65 +1,108 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 
-st.set_page_config(page_title="AI Clarity Checker", layout="centered")
-st.title("AI Clarity Checker")
-st.subheader("Clarity Over Cosmetic — A Sample Reference Tool")
+st.set_page_config(page_title="Clarity Checker™", layout="wide")
 
-uploaded_file = st.file_uploader("📤 Upload the sample CSV file", type=["csv"])
+st.markdown("# Clarity Checker™ - Visual Capitalist Style")
+st.markdown("### Upload your team's data and visualize clarity like never before.")
+
+# File uploader
+uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
 
 if uploaded_file is not None:
+    # Load the data
     df = pd.read_csv(uploaded_file)
-    st.write("📊 Preview of Uploaded Data:")
-    st.dataframe(df)
 
-    report = {}
+    # Define goals
+    goals = {
+        "Customer Satisfaction (%)": 85,
+        "First Call Resolution (%)": 80,
+        "Average Call Handle Time (s)": 600,
+        "Sampling Rate (%)": 40
+    }
 
-    if 'Survey_Responded' in df.columns and 'Customer_Satisfaction_Score' in df.columns:
-        st.markdown("### 📋 Detected: Customer Service Dataset")
+    # Calculate key metrics
+    total_customers = len(df)
+    total_responded = df['Survey_Responded'].sum()
+    sampling_rate = (total_responded / total_customers) * 100
 
-        total_customers = len(df)
-        total_responded = df['Survey_Responded'].sum()
-        sampling_rate = (total_responded / total_customers) * 100
+    # Rep-level analysis
+    rep_analysis = df.groupby('Rep_Name').agg({
+        'Survey_Responded': 'sum',
+        'Customer_Satisfaction_Score': 'mean',
+        'First_Call_Resolved': lambda x: (x == 'Yes').mean() * 100,
+        'Call_Handle_Time': 'mean'
+    }).reset_index()
 
-        report['Sampling Goal Presence'] = '❌ Failed (No visible target)' if sampling_rate < 30 else '✅ Passed'
-        report['Sampling Size Adequacy'] = f"{'⚠️ Needs Review' if sampling_rate < 50 else '✅ Passed'} ({sampling_rate:.1f}% sampled)"
+    # Add sampling rate calculation
+    rep_analysis['Sampling Rate (%)'] = (rep_analysis['Survey_Responded'] / total_customers) * 100
 
-        responded_scores = df[df['Survey_Responded'] == 1]['Customer_Satisfaction_Score'].dropna()
-        if not responded_scores.empty:
-            avg_satisfaction = responded_scores.mean()
-            satisfaction_result = '✅ Passed' if avg_satisfaction >= 4.25 else ('⚠️ Needs Review' if avg_satisfaction >= 3.5 else '❌ Failed')
-            report['Customer Satisfaction Clarity'] = f"{satisfaction_result} (Avg: {avg_satisfaction:.2f})"
-        else:
-            report['Customer Satisfaction Clarity'] = '❌ Failed (No valid survey responses)'
+    # Identification of Recognition Integrity Breach
+    rep_analysis['Recognition Integrity'] = rep_analysis.apply(
+        lambda x: '❌ Breach' if x['Sampling Rate (%)'] < 40 else '✅ Clear', axis=1
+    )
 
-        if 'First_Call_Resolved' in df.columns:
-            fcr_rate = (df['First_Call_Resolved'] == 'Yes').sum() / total_customers * 100
-            report['First Call Resolution'] = f"{'✅ Passed' if fcr_rate >= 80 else ('⚠️ Needs Review' if fcr_rate >= 65 else '❌ Failed')} ({fcr_rate:.1f}%)"
+    # Display the Rep Analysis Table
+    st.markdown("### Representative Analysis")
+    st.dataframe(rep_analysis[['Rep_Name', 'Sampling Rate (%)', 'Customer_Satisfaction_Score', 'First_Call_Resolved', 'Call_Handle_Time', 'Recognition Integrity']])
 
-        if 'Call_Handle_Time' in df.columns:
-            mean_handle_time = df['Call_Handle_Time'].mean()
-            report['Call Handle Time Clarity'] = f"{'⚠️ Needs Review' if mean_handle_time > 600 else '✅ Passed'} (Avg: {mean_handle_time:.0f}s)"
-            report['Time Format Usability'] = '❌ Failed (Time in seconds, not frontline-friendly)'
+    # Prepare a summary DataFrame
+    summary_df = pd.DataFrame({
+        'Metric': [
+            'Sampling Rate (%)',
+            'Average Customer Satisfaction (%)',
+            'First Call Resolution (%)',
+            'Average Call Handle Time (seconds)'
+        ],
+        'Current Value': [
+            round(sampling_rate, 1),
+            round(rep_analysis['Customer_Satisfaction_Score'].mean() * 100 / 5, 1),
+            round(rep_analysis['First_Call_Resolved'].mean(), 1),
+            round(rep_analysis['Call_Handle_Time'].mean(), 1)
+        ],
+        'Goal': [
+            'Undefined' if sampling_rate == 0 else goals["Sampling Rate (%)"],
+            goals["Customer Satisfaction (%)"],
+            goals["First Call Resolution (%)"],
+            goals["Average Call Handle Time (s)"]
+        ]
+    })
 
-        if 'Recognition_Awarded' in df.columns:
-            rep_group = df[df['Survey_Responded'] == 1].groupby('Rep_Name').agg({
-                'Survey_Responded': 'sum',
-                'Customer_Satisfaction_Score': 'mean',
-                'Recognition_Awarded': 'first'
-            }).reset_index()
-            total_per_rep = df.groupby('Rep_Name').size().reset_index(name='Total_Customers')
-            merged = pd.merge(rep_group, total_per_rep, on='Rep_Name')
-            merged['Sample Size (%)'] = (merged['Survey_Responded'] / merged['Total_Customers']) * 100
+    # Render Visual Capitalist-style dashboard
+    fig = go.Figure()
 
-            flagged = merged[(merged['Recognition_Awarded'] == 'Yes') & (merged['Sample Size (%)'] < 30)]
-            if not flagged.empty:
-                report['⚠️ Recognition Integrity'] = '❌ Recognition awarded with <30% sampling — potential manipulation or cosmetic pattern detected.'
-            else:
-                report['⚠️ Recognition Integrity'] = '✅ Recognition distribution appears sampling-aligned.'
+    # Loop through metrics and add to dashboard
+    for index, row in summary_df.iterrows():
+        fig.add_trace(go.Indicator(
+            mode="gauge+number",
+            value=row['Current Value'],
+            title={"text": f"{row['Metric']} - Goal: {row['Goal']}"},
+            gauge={
+                'axis': {'range': [0, 100] if '%' in row['Metric'] else [0, 1000]},
+                'bar': {'color': "orange" if row['Current Value'] < goals.get(row['Metric'], 100) else "#4CAF50"},
+                'steps': [
+                    {'range': [0, goals.get(row['Metric'], 100)], 'color': 'red'},
+                    {'range': [goals.get(row['Metric'], 100), 100 if '%' in row['Metric'] else 1000], 'color': 'green'}
+                ]
+            },
+            domain={'x': [0, 0.5] if index % 2 == 0 else [0.5, 1], 'y': [0.5, 1] if index < 2 else [0, 0.5]}
+        ))
 
-    else:
-        st.warning("Unrecognized format. Ensure your CSV contains: Survey_Responded, Customer_Satisfaction_Score, Rep_Name, and Recognition_Awarded.")
+    # Layout settings
+    fig.update_layout(
+        title="Clarity Checker Dashboard",
+        height=600,
+        width=800,
+        margin=dict(l=50, r=50, t=50, b=50),
+        font=dict(size=14, color="black")
+    )
 
-    if report:
-        st.markdown("### ✅ Clarity Over Cosmetic™ Report")
-        st.dataframe(pd.DataFrame(list(report.items()), columns=['Check Area', 'Result']))
+    # Display the dashboard
+    st.plotly_chart(fig)
+
+    # Option to download the visuals
+    if st.button('Download Dashboard as PNG'):
+        fig.write_image("/mnt/data/clarity_checker_dashboard_v2.png")
+        st.markdown('[Download Image](sandbox:/mnt/data/clarity_checker_dashboard_v2.png)')
+
