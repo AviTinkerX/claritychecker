@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
+import numpy as np
 
 st.set_page_config(page_title="Clarity Checker™", layout="wide")
 
@@ -22,8 +22,8 @@ if uploaded_file is not None:
         goals = {
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
-            "Average Call Handle Time (s)": 600,
-            "Sampling Rate (%)": 40
+            "Average Call Handle Time (seconds)": 600,
+            "Sampling Rate (%)": 'Undefined'
         }
 
         # Calculate key metrics
@@ -33,6 +33,16 @@ if uploaded_file is not None:
             sampling_rate = (total_responded / total_customers) * 100
         else:
             sampling_rate = 0.0
+
+        # Check if Sampling Rate Goal is Defined
+        if goals["Sampling Rate (%)"] == 'Undefined':
+            st.markdown("""
+                <div style='background-color:#ffcccc; color:#990000; padding:10px; border-radius:5px; margin-bottom:15px;'>
+                    <strong>⚠️ Recognition Integrity Breach Detected:</strong> 
+                    No defined Sampling Rate Goal. This opens the door to data manipulation, cherry-picking, and misleading performance evaluations. 
+                    Leaders need to set clear sampling goals to prevent false recognitions and ensure real performance is rewarded.
+                </div>
+            """, unsafe_allow_html=True)
 
         # Rep-level analysis
         rep_analysis = df.groupby('Rep_Name').agg(
@@ -51,7 +61,9 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach' if goals["Sampling Rate (%)"] == "Undefined" or x['Rep Sampling Rate (%)'] < 40 else '✅ Clear',
+            lambda x: '❌ Breach (No Sampling Goal)' if goals["Sampling Rate (%)"] == 'Undefined' else (
+                '❌ Breach' if x['Rep Sampling Rate (%)'] < 40 else '✅ Clear'
+            ),
             axis=1
         )
 
@@ -81,34 +93,44 @@ if uploaded_file is not None:
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                40,
-                85,
-                80,
-                600
+                'Undefined',
+                goals["Customer Satisfaction (%)"],
+                goals["First Call Resolution (%)"],
+                goals["Average Call Handle Time (seconds)"]
             ]
         })
 
-        # Plotly Bar Chart
-        st.markdown("## 📊 Clarity Dashboard")
-        for index, row in summary_df.iterrows():
-            color = 'green' if row['Current Value'] >= row['Goal'] else 'red'
-            fig = go.Figure(go.Bar(
-                x=[row['Current Value']],
-                y=[row['Metric']],
-                orientation='h',
-                marker=dict(color=color),
-                text=f"{row['Current Value']} / {row['Goal']}",
-                textposition='inside'
-            ))
-            fig.update_layout(
-                xaxis=dict(range=[0, max(row['Goal'] + 10, 1000)]),
-                width=800,
-                height=200,
-                margin=dict(l=50, r=50, t=30, b=30)
-            )
-            st.plotly_chart(fig)
+        # Render the bar chart visualization
+        fig = go.Figure()
 
-        # Download Button
-        if st.button('Download Analysis Report'):
-            rep_analysis.to_csv('/mnt/data/clarity_checker_report.csv', index=False)
-            st.markdown('[Download Report](sandbox:/mnt/data/clarity_checker_report.csv)')
+        for index, row in summary_df.iterrows():
+            bar_color = "green"
+            if row['Metric'] == 'Average Call Handle Time (seconds)':
+                bar_color = "green" if row['Current Value'] < row['Goal'] else "red"
+            else:
+                bar_color = "red" if row['Current Value'] < float(row['Goal']) else "green"
+
+            fig.add_trace(go.Bar(
+                x=[row['Current Value']],
+                y=[f"{row['Metric']} ({row['Current Value']} / {row['Goal']})"],
+                orientation='h',
+                marker=dict(color=bar_color),
+                text=f"{row['Current Value']} / {row['Goal']}",
+                textposition='auto'
+            ))
+
+        # Layout settings
+        fig.update_layout(
+            title="<b>Organizational Clarity Dashboard</b>",
+            height=600,
+            width=800,
+            margin=dict(l=50, r=50, t=50, b=50),
+            font=dict(size=14, color="white"),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(title='Value', showgrid=False),
+            yaxis=dict(showgrid=False)
+        )
+
+        # Display the dashboard
+        st.plotly_chart(fig, use_container_width=True)
