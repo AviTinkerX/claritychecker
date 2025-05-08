@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # App Configuration
-st.set_page_config(page_title="Clarity Checker™", layout="wide")
+st.set_page_config(page_title="Clarity Checker", layout="wide")
 
 # Main headers
 st.markdown("# Clarity Checker™ - Visual Capitalist Style")
