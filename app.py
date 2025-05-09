@@ -22,8 +22,8 @@ if uploaded_file is not None:
         goals = {
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
-            "Average Call Handle Time (seconds)": 600,
-            "Sampling Rate (%)": 'Undefined'
+            "Average Call Handle Time (s)": 600,
+            "Sampling Rate (%)": 40
         }
 
         # Calculate key metrics
@@ -33,16 +33,6 @@ if uploaded_file is not None:
             sampling_rate = (total_responded / total_customers) * 100
         else:
             sampling_rate = 0.0
-
-        # Check if Sampling Rate Goal is Defined
-        if goals["Sampling Rate (%)"] == 'Undefined':
-            st.markdown("""
-                <div style='background-color:#ffcccc; color:#990000; padding:10px; border-radius:5px; margin-bottom:15px;'>
-                    <strong>⚠️ Recognition Integrity Breach Detected:</strong> 
-                    No defined Sampling Rate Goal. This opens the door to data manipulation, cherry-picking, and misleading performance evaluations. 
-                    Leaders need to set clear sampling goals to prevent false recognitions and ensure real performance is rewarded.
-                </div>
-            """, unsafe_allow_html=True)
 
         # Rep-level analysis
         rep_analysis = df.groupby('Rep_Name').agg(
@@ -61,9 +51,7 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach (No Sampling Goal)' if goals["Sampling Rate (%)"] == 'Undefined' else (
-                '❌ Breach' if x['Rep Sampling Rate (%)'] < 40 else '✅ Clear'
-            ),
+            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
             axis=1
         )
 
@@ -82,7 +70,7 @@ if uploaded_file is not None:
         summary_df = pd.DataFrame({
             'Metric': [
                 'Sampling Rate (%)',
-                'Customer Satisfaction (%)',
+                'Average Customer Satisfaction (%)',
                 'First Call Resolution (%)',
                 'Average Call Handle Time (seconds)'
             ],
@@ -93,44 +81,46 @@ if uploaded_file is not None:
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                'Undefined',
+                'Undefined' if goals.get("Sampling Rate (%)") is None else goals["Sampling Rate (%)"],
                 goals["Customer Satisfaction (%)"],
                 goals["First Call Resolution (%)"],
-                goals["Average Call Handle Time (seconds)"]
+                goals["Average Call Handle Time (s)"]
             ]
         })
 
-        # Render the bar chart visualization
+        # Render Visual Capitalist-style dashboard
         fig = go.Figure()
 
+        # Loop through metrics and add to dashboard
         for index, row in summary_df.iterrows():
-            bar_color = "green"
-            if row['Metric'] == 'Average Call Handle Time (seconds)':
-                bar_color = "green" if row['Current Value'] < row['Goal'] else "red"
-            else:
-                bar_color = "red" if row['Current Value'] < float(row['Goal']) else "green"
-
-            fig.add_trace(go.Bar(
-                x=[row['Current Value']],
-                y=[f"{row['Metric']} ({row['Current Value']} / {row['Goal']})"],
-                orientation='h',
-                marker=dict(color=bar_color),
-                text=f"{row['Current Value']} / {row['Goal']}",
-                textposition='auto'
+            fig.add_trace(go.Indicator(
+                mode="gauge+number",
+                value=row['Current Value'],
+                title={"text": f"{row['Metric']} - Goal: {row['Goal']}"},
+                gauge={
+                    'axis': {'range': [0, 100] if '%' in row['Metric'] else [0, 1000]},
+                    'bar': {'color': "orange" if row['Current Value'] < goals.get(row['Metric'], 100) else "#4CAF50"},
+                    'steps': [
+                        {'range': [0, goals.get(row['Metric'], 100)], 'color': 'red'},
+                        {'range': [goals.get(row['Metric'], 100), 100 if '%' in row['Metric'] else 1000], 'color': 'green'}
+                    ]
+                },
+                domain={'x': [0, 0.5] if index % 2 == 0 else [0.5, 1], 'y': [0.5, 1] if index < 2 else [0, 0.5]}
             ))
 
         # Layout settings
         fig.update_layout(
-            title="<b>Organizational Clarity Dashboard</b>",
+            title="Clarity Checker Dashboard",
             height=600,
             width=800,
             margin=dict(l=50, r=50, t=50, b=50),
-            font=dict(size=14, color="white"),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(title='Value', showgrid=False),
-            yaxis=dict(showgrid=False)
+            font=dict(size=14, color="black")
         )
 
         # Display the dashboard
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig)
+
+        # Option to download the visuals
+        if st.button('Download Dashboard as PNG'):
+            fig.write_image("/mnt/data/clarity_checker_dashboard_v2.png")
+            st.markdown('[Download Image](sandbox:/mnt/data/clarity_checker_dashboard_v2.png)')
