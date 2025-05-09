@@ -50,9 +50,21 @@ if uploaded_file is not None:
         )
 
         # Identification of Recognition Integrity Breach
-        rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
-            axis=1
+        def check_recognition_integrity(row):
+            if goals["Sampling Rate (%)"] == "Undefined":
+                return '❌ Breach - No Sampling Goal Defined'
+            elif row['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"]:
+                return '❌ Breach - Sampling Rate Too Low'
+            else:
+                return '✅ Clear'
+
+        rep_analysis['Recognition Integrity'] = rep_analysis.apply(check_recognition_integrity, axis=1)
+
+        # Add a separate column for clearer visualization
+        rep_analysis['Breach Reason'] = rep_analysis.apply(
+            lambda x: "No Sampling Goal" if goals["Sampling Rate (%)"] == "Undefined" else (
+                "Low Sampling Rate" if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else "Clear"
+            ), axis=1
         )
 
         # Display the Rep Analysis Table
@@ -63,7 +75,8 @@ if uploaded_file is not None:
             'Customer_Satisfaction_Avg_Score',
             'First_Call_Resolved_Rate',
             'Call_Handle_Time_Avg',
-            'Recognition Integrity'
+            'Recognition Integrity',
+            'Breach Reason'
         ]])
 
         # Prepare a summary DataFrame
@@ -108,7 +121,4 @@ if uploaded_file is not None:
             )
             st.plotly_chart(fig)
 
-        # Download Button
-        if st.button('Download Analysis Report'):
-            rep_analysis.to_csv('/mnt/data/clarity_checker_report.csv', index=False)
-            st.markdown('[Download Report](sandbox:/mnt/data/clarity_checker_report.csv)')
+    
