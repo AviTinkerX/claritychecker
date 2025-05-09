@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import numpy as np
+import plotly.express as px
 
 st.set_page_config(page_title="Clarity Checker", layout="wide")
 
@@ -23,7 +23,7 @@ if uploaded_file is not None:
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
             "Average Call Handle Time (s)": 600,
-            "Sampling Rate (%)": 40
+            "Sampling Rate (%)": "Undefined"  # We show it as undefined
         }
 
         # Calculate key metrics
@@ -51,7 +51,8 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
+            lambda x: '❌ Breach - No Goal Defined' if goals["Sampling Rate (%)"] == "Undefined" else
+            ('❌ Breach - Too Low' if x['Rep Sampling Rate (%)'] < 40 else '✅ Clear'),
             axis=1
         )
 
@@ -70,57 +71,54 @@ if uploaded_file is not None:
         summary_df = pd.DataFrame({
             'Metric': [
                 'Sampling Rate (%)',
-                'Average Customer Satisfaction (%)',
+                'Customer Satisfaction (%)',
                 'First Call Resolution (%)',
                 'Average Call Handle Time (seconds)'
             ],
             'Current Value': [
                 round(sampling_rate, 1),
-                round(rep_analysis['Customer_Satisfaction_Avg_Score'].mean() * 100 / 5, 1),
+                round(rep_analysis['Customer_Satisfaction_Avg_Score'].mean(), 1),
                 round(rep_analysis['First_Call_Resolved_Rate'].mean(), 1),
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                'Undefined' if goals.get("Sampling Rate (%)") is None else goals["Sampling Rate (%)"],
-                goals["Customer Satisfaction (%)"],
-                goals["First Call Resolution (%)"],
-                goals["Average Call Handle Time (s)"]
+                "Undefined",  # This is key to your point of Integrity Breach
+                85,
+                80,
+                600
             ]
         })
 
-        # Render Visual Capitalist-style dashboard
-        fig = go.Figure()
-
-        # Loop through metrics and add to dashboard
+        # Plotly Bar Chart
+        st.markdown("## 📊 Clarity Dashboard")
         for index, row in summary_df.iterrows():
-            fig.add_trace(go.Indicator(
-                mode="gauge+number",
-                value=row['Current Value'],
-                title={"text": f"{row['Metric']} - Goal: {row['Goal']}"},
-                gauge={
-                    'axis': {'range': [0, 100] if '%' in row['Metric'] else [0, 1000]},
-                    'bar': {'color': "orange" if row['Current Value'] < goals.get(row['Metric'], 100) else "#4CAF50"},
-                    'steps': [
-                        {'range': [0, goals.get(row['Metric'], 100)], 'color': 'red'},
-                        {'range': [goals.get(row['Metric'], 100), 100 if '%' in row['Metric'] else 1000], 'color': 'green'}
-                    ]
-                },
-                domain={'x': [0, 0.5] if index % 2 == 0 else [0.5, 1], 'y': [0.5, 1] if index < 2 else [0, 0.5]}
+            color = 'green'
+            if row['Goal'] != "Undefined":
+                if 'Time' in row['Metric']:
+                    color = 'green' if row['Current Value'] <= row['Goal'] else 'red'
+                else:
+                    color = 'green' if row['Current Value'] >= row['Goal'] else 'red'
+            else:
+                color = 'orange'
+
+            fig = go.Figure(go.Bar(
+                x=[row['Current Value']],
+                y=[row['Metric']],
+                orientation='h',
+                marker=dict(color=color),
+                text=f"{row['Current Value']} / {row['Goal']}",
+                textposition='inside'
             ))
+            fig.update_layout(
+                xaxis=dict(range=[0, max(float(row['Current Value']) + 20, 100)]),
+                width=800,
+                height=200,
+                margin=dict(l=50, r=50, t=30, b=30),
+                title=f"{row['Metric']}"
+            )
+            st.plotly_chart(fig)
 
-        # Layout settings
-        fig.update_layout(
-            title="Clarity Checker Dashboard",
-            height=600,
-            width=800,
-            margin=dict(l=50, r=50, t=50, b=50),
-            font=dict(size=14, color="black")
-        )
-
-        # Display the dashboard
-        st.plotly_chart(fig)
-
-        # Option to download the visuals
-        if st.button('Download Dashboard as PNG'):
-            fig.write_image("/mnt/data/clarity_checker_dashboard_v2.png")
-            st.markdown('[Download Image](sandbox:/mnt/data/clarity_checker_dashboard_v2.png)')
+        # Download Button
+        if st.button('Download Analysis Report'):
+            rep_analysis.to_csv('/mnt/data/clarity_checker_report.csv', index=False)
+            st.markdown('[Download Report](sandbox:/mnt/data/clarity_checker_report.csv)')
