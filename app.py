@@ -23,7 +23,7 @@ if uploaded_file is not None:
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
             "Average Call Handle Time (s)": 600,
-            "Sampling Rate (%)": "Undefined"  # We show it as undefined
+            "Sampling Rate (%)": 40
         }
 
         # Calculate key metrics
@@ -51,8 +51,7 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach - No Goal Defined' if goals["Sampling Rate (%)"] == "Undefined" else
-            ('❌ Breach - Too Low' if x['Rep Sampling Rate (%)'] < 40 else '✅ Clear'),
+            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
             axis=1
         )
 
@@ -82,7 +81,7 @@ if uploaded_file is not None:
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                "Undefined",  # This is key to your point of Integrity Breach
+                40,
                 85,
                 80,
                 600
@@ -92,15 +91,7 @@ if uploaded_file is not None:
         # Plotly Bar Chart
         st.markdown("## 📊 Clarity Dashboard")
         for index, row in summary_df.iterrows():
-            color = 'green'
-            if row['Goal'] != "Undefined":
-                if 'Time' in row['Metric']:
-                    color = 'green' if row['Current Value'] <= row['Goal'] else 'red'
-                else:
-                    color = 'green' if row['Current Value'] >= row['Goal'] else 'red'
-            else:
-                color = 'orange'
-
+            color = 'green' if (row['Current Value'] >= row['Goal'] if 'Rate' in row['Metric'] or 'Satisfaction' in row['Metric'] else row['Current Value'] <= row['Goal']) else 'red'
             fig = go.Figure(go.Bar(
                 x=[row['Current Value']],
                 y=[row['Metric']],
@@ -110,11 +101,10 @@ if uploaded_file is not None:
                 textposition='inside'
             ))
             fig.update_layout(
-                xaxis=dict(range=[0, max(float(row['Current Value']) + 20, 100)]),
+                xaxis=dict(range=[0, max(row['Goal'] + 10, 1000)]),
                 width=800,
                 height=200,
-                margin=dict(l=50, r=50, t=30, b=30),
-                title=f"{row['Metric']}"
+                margin=dict(l=50, r=50, t=30, b=30)
             )
             st.plotly_chart(fig)
 
