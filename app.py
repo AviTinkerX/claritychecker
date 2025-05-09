@@ -3,10 +3,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-st.set_page_config(page_title="Clarity Checker", layout="wide")
+st.set_page_config(page_title="Clarity Checker™", layout="wide")
 
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>Clarity Checker</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #4A5568;'>Upload your team's data and visualize clarity.</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>Clarity Checker™</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #4A5568;'>Upload your team's data and visualize clarity like never before.</h3>", unsafe_allow_html=True)
 
 # File uploader
 uploaded_file = st.file_uploader("📤 Upload your CSV file", type=["csv"])
@@ -23,7 +23,7 @@ if uploaded_file is not None:
             "Customer Satisfaction (%)": 85,
             "First Call Resolution (%)": 80,
             "Average Call Handle Time (s)": 600,
-            "Sampling Rate (%)": 40
+            "Sampling Rate (%)": "Undefined"
         }
 
         # Calculate key metrics
@@ -51,7 +51,7 @@ if uploaded_file is not None:
 
         # Identification of Recognition Integrity Breach
         rep_analysis['Recognition Integrity'] = rep_analysis.apply(
-            lambda x: '❌ Breach' if x['Rep Sampling Rate (%)'] < goals["Sampling Rate (%)"] else '✅ Clear',
+            lambda x: '❌ Breach' if goals["Sampling Rate (%)"] == "Undefined" or x['Rep Sampling Rate (%)'] < 40 else '✅ Clear',
             axis=1
         )
 
@@ -76,12 +76,12 @@ if uploaded_file is not None:
             ],
             'Current Value': [
                 round(sampling_rate, 1),
-                round(rep_analysis['Customer_Satisfaction_Avg_Score'].mean(), 1),
+                round(rep_analysis['Customer_Satisfaction_Avg_Score'].mean() * 100 / 5, 1),
                 round(rep_analysis['First_Call_Resolved_Rate'].mean(), 1),
                 round(rep_analysis['Call_Handle_Time_Avg'].mean(), 1)
             ],
             'Goal': [
-                40,
+                "Undefined",
                 85,
                 80,
                 600
@@ -91,7 +91,7 @@ if uploaded_file is not None:
         # Plotly Bar Chart
         st.markdown("## 📊 Clarity Dashboard")
         for index, row in summary_df.iterrows():
-            color = 'green' if (row['Current Value'] >= row['Goal'] if 'Rate' in row['Metric'] or 'Satisfaction' in row['Metric'] else row['Current Value'] <= row['Goal']) else 'red'
+            color = 'green' if row['Current Value'] >= row['Goal'] else 'red'
             fig = go.Figure(go.Bar(
                 x=[row['Current Value']],
                 y=[row['Metric']],
@@ -108,7 +108,4 @@ if uploaded_file is not None:
             )
             st.plotly_chart(fig)
 
-        # Download Button
-        if st.button('Download Analysis Report'):
-            rep_analysis.to_csv('/mnt/data/clarity_checker_report.csv', index=False)
-            st.markdown('[Download Report](sandbox:/mnt/data/clarity_checker_report.csv)')
+        st.success("✅ Analysis Complete")
